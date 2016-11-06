@@ -1,7 +1,7 @@
 package com.h4h.h4h;
 
 import android.Manifest;
-import android.content.Context;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -10,28 +10,31 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.widget.Toast;
 
-import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStates;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
+
 
 public class MapTracker extends FragmentActivity implements OnMapReadyCallback {
-
+    //private GoogleApiClient mGoogleApiClient;
     private GoogleMap mMap;
-    private static final int REQ_PERMISSION = 1;
+    protected static final int REQ_PERMISSION = 1;
+    protected static final int REQUEST_CHECK_SETTINGS = 0x1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_tracker);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
+        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
     }
-
 
     /**
      * Manipulates the map once available.
@@ -56,25 +59,12 @@ public class MapTracker extends FragmentActivity implements OnMapReadyCallback {
 
         if (checkPermission()) {
             mMap.setMyLocationEnabled(true);
+            //allowCurrentLocation();
         } else {
             Toast.makeText(this, "You have to accept to enjoy all app's services!", Toast.LENGTH_LONG).show();
             askPermission();
         }
 
-    }
-
-    // Check for permission to access Location
-    private boolean checkPermission() {
-        // Ask for permission if it wasn't granted yet
-        return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED );
-    }
-    // Asks for permission
-    private void askPermission() {
-        ActivityCompat.requestPermissions(
-                this,
-                new String[] { Manifest.permission.ACCESS_FINE_LOCATION },
-                REQ_PERMISSION);
     }
 
     @Override
@@ -86,7 +76,10 @@ public class MapTracker extends FragmentActivity implements OnMapReadyCallback {
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     // Permission granted
                     if (checkPermission())
+                    {
                         mMap.setMyLocationEnabled(true);
+                        //allowCurrentLocation();
+                    }
 
                 } else {
                     // Permission denied
@@ -96,4 +89,48 @@ public class MapTracker extends FragmentActivity implements OnMapReadyCallback {
             }
         }
     }
+
+    public void onResult(LocationSettingsResult result) {
+        final Status status = result.getStatus();
+        final LocationSettingsStates states = result.getLocationSettingsStates();
+        switch (status.getStatusCode()) {
+            case LocationSettingsStatusCodes.SUCCESS:
+                // All location settings are satisfied. The client can
+                // initialize location requests here.
+
+                Toast.makeText(this, "SUCCESS", Toast.LENGTH_SHORT);
+                break;
+            case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                // Location settings are not satisfied, but this can be fixed
+                // by showing the user a dialog.
+                try {
+                    // Show the dialog by calling startResolutionForResult(),
+                    // and check the result in onActivityResult().
+                    status.startResolutionForResult(this, REQUEST_CHECK_SETTINGS);
+
+                    Toast.makeText(this, "RESOLUTION_REQUIRED", Toast.LENGTH_SHORT);
+                } catch (IntentSender.SendIntentException e) {
+                    // Ignore the error.
+                }
+                break;
+            case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                // Location settings are not satisfied. However, we have no way
+                // to fix the settings so we won't show the dialog.
+
+                Toast.makeText(this, "SETTINGS_CHANGE_UNAVAILABLE", Toast.LENGTH_SHORT);
+                break;
+        }
+    }
+
+    // Check for permission to access Location
+    private boolean checkPermission() {
+        // Ask for permission if it wasn't granted yet
+        return (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED );
+    }
+
+    // Asks for permission
+    private void askPermission() {
+        ActivityCompat.requestPermissions(this, new String[] { Manifest.permission.ACCESS_FINE_LOCATION }, REQ_PERMISSION);
+    }
+
 }
